@@ -1,0 +1,13 @@
+{
+    "name": "screenshot-service",
+    "version": "1.0.0",
+    "description": "A service for taking screenshots",
+    "main": "app.js",
+    "scripts": {
+      "start": "node app.js"
+    },
+    "dependencies": {
+      "express": "^4.17.1",
+      "puppeteer": "^10.4.0"
+    }
+  }
