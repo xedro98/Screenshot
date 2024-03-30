@@ -1,9 +1,9 @@
 const express = require('express');
 const puppeteer = require('puppeteer');
-
 const app = express();
 
 let browser;
+let pagePool = [];
 
 async function startBrowser() {
     browser = await puppeteer.launch({
@@ -17,6 +17,13 @@ async function startBrowser() {
             '--single-process',
         ],
     });
+
+    // Create a pool of pages
+    for (let i = 0; i < 10; i++) {
+        const page = await browser.newPage();
+        await page.setViewport({ width: 1920, height: 1080 });
+        pagePool.push(page);
+    }
 }
 
 app.get('/screenshot', async (req, res) => {
@@ -26,12 +33,17 @@ app.get('/screenshot', async (req, res) => {
         return res.status(400).send('Missing URL parameter');
     }
 
-    const page = await browser.newPage();
-    await page.setViewport({ width: 1920, height: 1080 });
+    // Use a page from the pool
+    const page = pagePool.pop();
+    if (!page) {
+        return res.status(503).send('Server too busy. Try again later.');
+    }
+
     await page.goto(url, { waitUntil: 'networkidle0' });
     const screenshot = await page.screenshot({ encoding: 'base64', fullPage: true });
 
-    await page.close();
+    // Return the page to the pool
+    pagePool.push(page);
 
     res.send(screenshot);
 });
