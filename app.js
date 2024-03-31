@@ -43,19 +43,35 @@ async function processRequest(req, res) {
 
     // Use a page from the pool
     const page = pagePool.pop();
+    let consoleErrors = [];
+    let requestFailure = null;
+
+    page.on('console', async msg => {
+        if (msg.type() === 'error') {
+            const location = msg.location();
+            consoleErrors.push(`Error: ${msg.text()} at ${location.url}:${location.lineNumber}:${location.columnNumber}`);
+        }
+    });
+
+    page.on('requestfailed', request => {
+        requestFailure = request.failure();
+    });
 
     try {
         await page.goto(url, { waitUntil: 'load', timeout: 0 });
+        if (consoleErrors.length > 0) {
+            await page.setContent(`<h1>${consoleErrors.join('<br/>')}</h1>`);
+        } else if (requestFailure) {
+            await page.setContent(`<h1>Request Failed: ${requestFailure.errorText}</h1>`);
+        }
         const screenshot = await page.screenshot({ encoding: 'base64', fullPage: true });
         res.send(screenshot);
     } catch (error) {
         console.error(`Failed to navigate to ${url}`);
         const errorMessage = error.message.includes('net::ERR') ? 'Network error' : error.message;
-        const errorPage = await browser.newPage();
-        await errorPage.setContent(`<h1>Error: ${errorMessage}</h1>`); // Set custom error page content
-        const screenshot = await errorPage.screenshot({ encoding: 'base64', fullPage: true });
+        await page.setContent(`<h1>Error: ${errorMessage}</h1>`); // Set custom error page content
+        const screenshot = await page.screenshot({ encoding: 'base64', fullPage: true });
         res.send(screenshot);
-        await errorPage.close();
     } finally {
         // Return the page to the pool
         pagePool.push(page);
