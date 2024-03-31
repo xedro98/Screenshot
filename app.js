@@ -40,17 +40,25 @@ app.get('/screenshot', async (req, res) => {
     }
 
     try {
+        page.on('response', async (response) => {
+            const status = response.status();
+            if (status >= 400) {
+                await page.setContent(`<h1>Error: ${status} ${response.statusText()}</h1>`);
+            }
+        });
+
         await page.goto(url, { waitUntil: 'load', timeout: 0 });
+        const screenshot = await page.screenshot({ encoding: 'base64', fullPage: true });
+        res.send(screenshot);
     } catch (error) {
         console.error(`Failed to navigate to ${url}`);
+        await page.setContent(`<h1>Error: ${error.message}</h1>`); // Set custom error page content
+        const screenshot = await page.screenshot({ encoding: 'base64', fullPage: true });
+        res.send(screenshot);
+    } finally {
+        // Return the page to the pool
+        pagePool.push(page);
     }
-
-    const screenshot = await page.screenshot({ encoding: 'base64', fullPage: true });
-
-    // Return the page to the pool
-    pagePool.push(page);
-
-    res.send(screenshot);
 });
 
 const port = process.env.PORT || 3000;
