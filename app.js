@@ -35,7 +35,7 @@ async function processQueue() {
 }
 
 // Set a reasonable timeout for page navigation
-const PAGE_NAVIGATION_TIMEOUT_MS = 30000; // 30 seconds
+const PAGE_NAVIGATION_TIMEOUT_MS = 60000; // 30 seconds
 
 async function processRequest(req, res) {
     const url = req.query.url;
