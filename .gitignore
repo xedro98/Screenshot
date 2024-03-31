@@ -1590,3 +1590,6 @@ node_modules/yauzl/README.md
 package-lock.json
 package.json
 package.json
+node_modules/uuid/README.md
+node_modules/.bin/sshpk-conv
+/node_modules

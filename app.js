@@ -1,6 +1,7 @@
 const express = require('express');
 const puppeteer = require('puppeteer');
 const app = express();
+const request = require('request-promise');
 
 let browser;
 let pagePool = [];
@@ -61,7 +62,8 @@ async function processRequest(req, res) {
     });
 
     try {
-        await page.goto(url, { waitUntil: 'load', timeout: PAGE_NAVIGATION_TIMEOUT_MS });
+        // Make a request to the URL before navigating to it
+        await request(url);
 
         if (consoleErrors.length > 0) {
             const errorHtml = `<div style="position: absolute; top: 0; left: 0; background: rgba(255, 0, 0, 0.7); color: white; padding: 10px;">${consoleErrors.join('<br/>')}</div>`;
@@ -83,7 +85,13 @@ async function processRequest(req, res) {
         res.send(screenshot);
     } catch (error) {
         console.error(`Failed to navigate to ${url}`);
-        const errorMessage = error.message.includes('net::ERR') ? 'Network error' : error.message;
+        let errorMessage = error.message.includes('net::ERR') ? 'Network error' : error.message;
+        // Include the error stack trace if it's a network error
+        if (errorMessage === 'Network error') {
+            errorMessage += `<br/><br/>Debug Info:<br/>${error.stack.replace(/\n/g, '<br/>')}`;
+        }
+        // Include the error message from the failed request
+        errorMessage += `<br/><br/>Request Error:<br/>${error.message.replace(/\n/g, '<br/>')}`;
         const errorPage = await browser.newPage();
         await errorPage.setContent(`<h1>Error: ${errorMessage}</h1>`); // Set custom error page content
         const screenshot = await errorPage.screenshot({ encoding: 'base64' });
