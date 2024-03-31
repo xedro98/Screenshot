@@ -69,9 +69,11 @@ async function processRequest(req, res) {
     } catch (error) {
         console.error(`Failed to navigate to ${url}`);
         const errorMessage = error.message.includes('net::ERR') ? 'Network error' : error.message;
-        await page.setContent(`<h1>Error: ${errorMessage}</h1>`); // Set custom error page content
-        const screenshot = await page.screenshot({ encoding: 'base64', fullPage: true });
+        const errorPage = await browser.newPage();
+        await errorPage.setContent(`<h1>Error: ${errorMessage}</h1>`); // Set custom error page content
+        const screenshot = await errorPage.screenshot({ encoding: 'base64', fullPage: true });
         res.send(screenshot);
+        await errorPage.close();
     } finally {
         // Return the page to the pool
         pagePool.push(page);
