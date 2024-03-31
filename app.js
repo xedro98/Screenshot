@@ -62,8 +62,9 @@ async function processRequest(req, res) {
     });
 
     try {
-        // Make a request to the URL before navigating to it
-        await request(url);
+        // Navigate to the URL
+        await page.goto(url, { timeout: PAGE_NAVIGATION_TIMEOUT_MS });
+
 
         if (consoleErrors.length > 0) {
             const errorHtml = `<div style="position: absolute; top: 0; left: 0; background: rgba(255, 0, 0, 0.7); color: white; padding: 10px;">${consoleErrors.join('<br/>')}</div>`;
@@ -85,11 +86,9 @@ async function processRequest(req, res) {
         res.send(screenshot);
     } catch (error) {
         console.error(`Failed to navigate to ${url}`);
-        let errorMessage = error.message.includes('net::ERR') ? 'Network error' : error.message;
-        // Include the error stack trace if it's a network error
-        if (errorMessage === 'Network error') {
-            errorMessage += `<br/><br/>Debug Info:<br/>${error.stack.replace(/\n/g, '<br/>')}`;
-        }
+        let errorMessage = error.message;
+        // Include the error stack trace for all errors
+       
         // Include the error message from the failed request
         errorMessage += `<br/><br/>Request Error:<br/>${error.message.replace(/\n/g, '<br/>')}`;
         const errorPage = await browser.newPage();
