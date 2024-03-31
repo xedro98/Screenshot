@@ -39,7 +39,12 @@ app.get('/screenshot', async (req, res) => {
         return res.status(503).send('Server too busy. Try again later.');
     }
 
-    await page.goto(url, { waitUntil: 'networkidle0' });
+    try {
+        await page.goto(url, { waitUntil: 'load', timeout: 0 });
+    } catch (error) {
+        console.error(`Failed to navigate to ${url}`);
+    }
+
     const screenshot = await page.screenshot({ encoding: 'base64', fullPage: true });
 
     // Return the page to the pool
