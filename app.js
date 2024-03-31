@@ -40,21 +40,17 @@ app.get('/screenshot', async (req, res) => {
     }
 
     try {
-        page.on('response', async (response) => {
-            const status = response.status();
-            if (status >= 400) {
-                await page.setContent(`<h1>Error: ${status} ${response.statusText()}</h1>`);
-            }
-        });
-
         await page.goto(url, { waitUntil: 'load', timeout: 0 });
         const screenshot = await page.screenshot({ encoding: 'base64', fullPage: true });
         res.send(screenshot);
     } catch (error) {
         console.error(`Failed to navigate to ${url}`);
-        await page.setContent(`<h1>Error: ${error.message}</h1>`); // Set custom error page content
-        const screenshot = await page.screenshot({ encoding: 'base64', fullPage: true });
+        const errorMessage = error.message.includes('net::ERR') ? 'Network error' : error.message;
+        const errorPage = await browser.newPage();
+        await errorPage.setContent(`<h1>Error: ${errorMessage}</h1>`); // Set custom error page content
+        const screenshot = await errorPage.screenshot({ encoding: 'base64', fullPage: true });
         res.send(screenshot);
+        await errorPage.close();
     } finally {
         // Return the page to the pool
         pagePool.push(page);
