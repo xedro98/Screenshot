@@ -62,12 +62,14 @@ async function processRequest(req, res) {
 
     try {
         await page.goto(url, { waitUntil: 'load', timeout: PAGE_NAVIGATION_TIMEOUT_MS });
+        const screenshot = await page.screenshot({ encoding: 'base64' }); // Capture the viewport
+
         if (consoleErrors.length > 0) {
             await page.setContent(`<h1>${consoleErrors.join('<br/>')}</h1>`);
         } else if (requestFailure) {
             await page.setContent(`<h1>Request Failed: ${requestFailure.errorText}</h1>`);
         }
-        const screenshot = await page.screenshot({ encoding: 'base64' }); // Capture only the viewport
+
         res.send(screenshot);
     } catch (error) {
         console.error(`Failed to navigate to ${url}`);
