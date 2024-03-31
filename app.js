@@ -4,6 +4,7 @@ const app = express();
 
 let browser;
 let pagePool = [];
+let queue = [];
 
 async function startBrowser() {
     browser = await puppeteer.launch({
@@ -26,7 +27,14 @@ async function startBrowser() {
     }
 }
 
-app.get('/screenshot', async (req, res) => {
+async function processQueue() {
+    if (queue.length > 0 && pagePool.length > 0) {
+        const { req, res } = queue.shift();
+        processRequest(req, res);
+    }
+}
+
+async function processRequest(req, res) {
     const url = req.query.url;
 
     if (!url) {
@@ -35,9 +43,6 @@ app.get('/screenshot', async (req, res) => {
 
     // Use a page from the pool
     const page = pagePool.pop();
-    if (!page) {
-        return res.status(503).send('Server too busy. Try again later.');
-    }
 
     try {
         await page.goto(url, { waitUntil: 'load', timeout: 0 });
@@ -54,6 +59,15 @@ app.get('/screenshot', async (req, res) => {
     } finally {
         // Return the page to the pool
         pagePool.push(page);
+        processQueue();
+    }
+}
+
+app.get('/screenshot', (req, res) => {
+    if (pagePool.length > 0) {
+        processRequest(req, res);
+    } else {
+        queue.push({ req, res });
     }
 });
 
