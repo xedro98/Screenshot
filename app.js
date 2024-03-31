@@ -62,14 +62,24 @@ async function processRequest(req, res) {
 
     try {
         await page.goto(url, { waitUntil: 'load', timeout: PAGE_NAVIGATION_TIMEOUT_MS });
-        const screenshot = await page.screenshot({ encoding: 'base64' }); // Capture the viewport
 
         if (consoleErrors.length > 0) {
-            await page.setContent(`<h1>${consoleErrors.join('<br/>')}</h1>`);
+            const errorHtml = `<div style="position: absolute; top: 0; left: 0; background: rgba(255, 0, 0, 0.7); color: white; padding: 10px;">${consoleErrors.join('<br/>')}</div>`;
+            await page.evaluate((errorHtml) => {
+                const div = document.createElement('div');
+                div.innerHTML = errorHtml;
+                document.body.appendChild(div);
+            }, errorHtml);
         } else if (requestFailure) {
-            await page.setContent(`<h1>Request Failed: ${requestFailure.errorText}</h1>`);
+            const errorHtml = `<div style="position: absolute; top: 0; left: 0; background: rgba(255, 0, 0, 0.7); color: white; padding: 10px;">Request Failed: ${requestFailure.errorText}</div>`;
+            await page.evaluate((errorHtml) => {
+                const div = document.createElement('div');
+                div.innerHTML = errorHtml;
+                document.body.appendChild(div);
+            }, errorHtml);
         }
 
+        const screenshot = await page.screenshot({ encoding: 'base64' }); // Capture the viewport
         res.send(screenshot);
     } catch (error) {
         console.error(`Failed to navigate to ${url}`);
