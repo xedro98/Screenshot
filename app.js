@@ -34,6 +34,9 @@ async function processQueue() {
     }
 }
 
+// Set a reasonable timeout for page navigation
+const PAGE_NAVIGATION_TIMEOUT_MS = 30000; // 30 seconds
+
 async function processRequest(req, res) {
     const url = req.query.url;
 
@@ -58,26 +61,29 @@ async function processRequest(req, res) {
     });
 
     try {
-        await page.goto(url, { waitUntil: 'load', timeout: 0 });
+        await page.goto(url, { waitUntil: 'load', timeout: PAGE_NAVIGATION_TIMEOUT_MS });
         if (consoleErrors.length > 0) {
             await page.setContent(`<h1>${consoleErrors.join('<br/>')}</h1>`);
         } else if (requestFailure) {
             await page.setContent(`<h1>Request Failed: ${requestFailure.errorText}</h1>`);
         }
-        const screenshot = await page.screenshot({ encoding: 'base64', fullPage: true });
+        const screenshot = await page.screenshot({ encoding: 'base64' }); // Capture only the viewport
         res.send(screenshot);
     } catch (error) {
         console.error(`Failed to navigate to ${url}`);
         const errorMessage = error.message.includes('net::ERR') ? 'Network error' : error.message;
         const errorPage = await browser.newPage();
         await errorPage.setContent(`<h1>Error: ${errorMessage}</h1>`); // Set custom error page content
-        const screenshot = await errorPage.screenshot({ encoding: 'base64', fullPage: true });
+        const screenshot = await errorPage.screenshot({ encoding: 'base64' });
         res.send(screenshot);
         await errorPage.close();
     } finally {
-        // Return the page to the pool
-        pagePool.push(page);
-        processQueue();
+        // Check if the page is still open before returning it to the pool
+        if (!page.isClosed()) {
+            pagePool.push(page);
+        }
+        // Process the next request in the queue asynchronously to allow for concurrency
+        setImmediate(processQueue);
     }
 }
 
